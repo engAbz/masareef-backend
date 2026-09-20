@@ -1,0 +1,43 @@
+name: Daily Currency Sync
+
+# متى يعمل هذا السكربت؟
+on:
+  schedule:
+    - cron: '0 0 * * *' # يعمل تلقائياً كل يوم الساعة 12 منتصف الليل بتوقيت جرينتش
+  workflow_dispatch: # يتيح لك زر تشغيل يدوي من واجهة جيت هاب
+
+# الصلاحيات اللازمة للسكربت للكتابة والرفع إلى المستودع
+permissions:
+  contents: write
+
+jobs:
+  update-rates:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4 # الإصدار الحديث والأسرع لـ 2026
+
+      - name: Setup Python
+        uses: actions/setup-python@v5 # الإصدار المستقر v5
+        with:
+          python-version: '3.11' # استخدام نسخة بايثون حديثة ومستقرة
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Python Script
+        env:
+          # حقن المفتاح السري المكتوب في إعدادات المستودع إلى كود بايثون
+          EXCHANGE_API_KEY: ${{ secrets.EXCHANGE_API_KEY }}
+        run: python update_rates.py
+
+      - name: Commit and Push changes
+        run: |
+          git config --global user.name "GitHub Action Bot"
+          git config --global user.email "action@github.com"
+          git add rates.json
+          # التأكد من وجود تغييرات قبل عمل Commit لمنع الأخطاء
+          git diff --quiet && git diff --staged --quiet || git commit -m "🚀 Auto-update currency rates"
+          git push
